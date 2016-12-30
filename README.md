@@ -22,15 +22,28 @@ Simply clone the repository or download the last release.
 
 ## Configuration
 
+#### Basic configuration
+
 Configure `paths` in your `requirejs` configuration:
 
 ```javascript
 requirejs.config({
     paths: {
         worker: "path/to/workerlib/worker"
+    },
+    worker: {
+        // requirejs-worker options goes here.
+        debug: true
     }
 });
 ```
+
+#### Available options
+
+- __path__: (Optional) URL of the worker. _Default: `webworker.js`_
+- __debug__: (Optional) Output debug informations to console. _Default: `false`_
+- __stack__: (Optional) Send error stacks from Web Worker. _Default: `false`_
+
 
 ## Usage
 

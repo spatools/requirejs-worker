@@ -1,5 +1,13 @@
 define(function() {
-    var proxies = {};
+    if (typeof importScripts === "undefined") {
+        throw new Error("This script could only be loaded in a Web Worker context!");
+    }
+
+    var 
+        slice = Array.prototype.slice,
+
+        WORKER_CONFIG = {},
+        PROXIES = {};
 
     return {
         init: init,
@@ -20,8 +28,12 @@ define(function() {
         }
         
         if (data.module === "system") {
-            if (data.load) {
-                loadModule(data.load);
+            switch (data.method) {
+                case "load":
+                    return loadModule(data.args);
+                case "config":
+                    WORKER_CONFIG = data.args;
+                    break;
             }
         }
         else {
@@ -30,11 +42,13 @@ define(function() {
     }
 
     function loadModule(name) {
-        if (proxies[name]) {
+        if (PROXIES[name]) {
             return;
         }
 
-        var proxy = proxies[name] = {};
+        log("Loading Module", name);
+
+        var proxy = PROXIES[name] = {};
         require([name], function (module) {
             proxy.name = name;
             proxy.module = module;
@@ -57,8 +71,9 @@ define(function() {
     }
 
     function callModuleMethod(req) {
-        var proxy = proxies[req.module];
+        var proxy = PROXIES[req.module];
         if (!proxy || proxy.methods.indexOf(req.method) === -1) {
+            warn("Method", req.method, "not found in", req.module);
             return;
         }
 
@@ -69,6 +84,8 @@ define(function() {
                 cid: req.cid
             },
             promise;
+
+        log("Calling method", getMethodString(req));
 
         try {
             var res = proxy.module[req.method].apply(proxy.module, req.args || []);
@@ -86,6 +103,7 @@ define(function() {
                 response.error = createErrorObject(error);
             })
             .then(function() {
+                log("Sending method", getMethodString(req), "response");
                 postMessage(response);
             });
     }
@@ -99,6 +117,30 @@ define(function() {
             obj[key] = error[key];
         });
 
+        if (WORKER_CONFIG.stack) {
+            obj.stack = error.stack;
+        }
+
         return obj;
+    }
+
+    /*
+     * DEBUG METHODS
+     */
+
+    function getMethodString(res) {
+        return "'" + res.module + "." + res.method + " (cid: " + res.cid + ")'";
+    }
+
+    function log() {
+        if (WORKER_CONFIG && WORKER_CONFIG.debug) {
+            console.log.apply(console, ["RJSW >>> WORKER >>>"].concat(slice.call(arguments)));
+        }
+    }
+    
+    function warn() {
+        if (WORKER_CONFIG && WORKER_CONFIG.debug) {
+            console.warn.apply(console, ["RJSW >>> WORKER >>>"].concat(slice.call(arguments)));
+        }
     }
 });

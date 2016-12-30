@@ -4,17 +4,23 @@ define(function () {
     }
 
     var
+        slice = Array.prototype.slice,
+
         HAS_WORKER = "Worker" in window,
-        WORKER_PATH = "webworker.js",
         IS_ALMOND = require.length === 5,
 
+        WORKER_CONFIG,
         WORKER, WORKER_PROMISE, WORKER_RESOLVE,
 
         PROXIES = {};
 
+    WebWorkerError.prototype = Error.prototype; // Before return
+
     return {
         load: HAS_WORKER ? loadWorker : loadSimple,
-        pluginBuilder: "worker/builder"
+        pluginBuilder: "worker/builder",
+
+        WebWorkerError: WebWorkerError // Can serve as error checker
     };
 
     /*
@@ -22,9 +28,8 @@ define(function () {
      */
 
     function loadWorker(name, req, onLoad, config) {
-        if (config.workerUrl) {
-            WORKER_PATH = config.workerUrl;
-        }
+        WORKER_CONFIG = WORKER_CONFIG || (config && config.worker) || {};
+        WORKER_CONFIG.path = WORKER_CONFIG.path || "webworker.js";
 
         ensureProxy(name, onLoad);
     }
@@ -46,7 +51,9 @@ define(function () {
             return Promise.resolve(WORKER);
         }
 
-        WORKER = new Worker(WORKER_PATH);
+        log("Launching worker from url:", WORKER_CONFIG.path);
+
+        WORKER = new Worker(WORKER_CONFIG.path);
         WORKER.onmessage = onWorkerMessage;
 
         return (WORKER_PROMISE = new Promise(function (res) { WORKER_RESOLVE = res; }));
@@ -80,6 +87,8 @@ define(function () {
         };
 
         if (IS_ALMOND) {
+            warn("Almond Detected! Make sure you really need almond because there is a perf issue with requirejs-worker plugin.");
+
             var mod = require(name);
             proxy.methods = Object.keys(mod).filter(function(key) { return typeof mod[key] === "function"; });
             proxy.module = buildProxyModule(proxy);
@@ -87,7 +96,9 @@ define(function () {
         }
 
         ensureWorker().then(function (worker) {
-            worker.postMessage({ module: "system", load: name });
+            log("Send load request for module:", name, "to Worker");
+
+            worker.postMessage({ module: "system", method: "load", args: name });
         });
     }
 
@@ -112,7 +123,7 @@ define(function () {
             operations = proxy.operations;
 
         return function () {
-            var args = Array.prototype.slice.call(arguments),
+            var args = slice.call(arguments),
                 cid = generateCid(),
                 operation = operations[cid] = {};
 
@@ -124,6 +135,8 @@ define(function () {
             return ensureProxyPromise(name)
                 .then(ensureWorker)
                 .then(function (worker) {
+                    log("Send method request '" + name + "." + method + " (cid: " + cid + ")' to Worker");
+
                     worker.postMessage({ module: name, method: method, cid: cid, args: args });
                 })
                 .then(function () {
@@ -159,8 +172,12 @@ define(function () {
     }
 
     function onWorkerInitialized() {
+        WORKER.postMessage({ module: "system", method: "config", args: WORKER_CONFIG });
+        
         WORKER_RESOLVE(WORKER);
         WORKER_PROMISE = WORKER_RESOLVE = null;
+
+        log("Worker initialized!");
     }
 
     function onModuleLoaded(res) {
@@ -178,20 +195,65 @@ define(function () {
             proxy.onLoad(proxy.module);
 
         delete proxy.onLoad;
+
+        log("Module", res.name, "sucessfully loaded!");
     }
 
     function onModuleMethodResult(res) {
         var proxy = PROXIES[res.module];
         if (!proxy || !proxy.isLoaded || proxy.methods.indexOf(res.method) === -1) {
+            warn("Method", res.method, "not found in", res.module);
             return;
         }
 
         var operation = proxy.operations[res.cid];
         if (!operation) {
+            warn("Method", getMethodString(res), "is not found in proxy operations!");
             return;
         }
 
-        res.error ? operation.reject(res.error) : operation.resolve(res.result);
+        if (res.error) {
+            operation.reject(new WebWorkerError(res.error));
+            warn("Method", getMethodString(res), "sent an error!");
+        }
+        else {
+            operation.resolve(res.result);
+            log("Method", getMethodString(res), "resolved successfully!");
+        }
+
         delete proxy.operations[res.cid];
+    }
+
+    /*
+     * ERRORS
+     */
+
+    function WebWorkerError(errorObj) {
+        this.name = "WebWorkerError";
+        this.message = errorObj.message || "";
+
+        if (WORKER_CONFIG.stack && errorObj.stack) {
+            this.stack = errorObj.stack;
+        }
+    }
+
+    /*
+     * DEBUG METHODS
+     */
+
+    function getMethodString(res) {
+        return "'" + res.module + "." + res.method + " (cid: " + res.cid + ")'";
+    }
+
+    function log() {
+        if (WORKER_CONFIG && WORKER_CONFIG.debug) {
+            console.log.apply(console, ["RJSW >>> DOM >>>"].concat(slice.call(arguments)));
+        }
+    }
+    
+    function warn() {
+        if (WORKER_CONFIG && WORKER_CONFIG.debug) {
+            console.warn.apply(console, ["RJSW >>> DOM >>>"].concat(slice.call(arguments)));
+        }
     }
 });

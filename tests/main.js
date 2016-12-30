@@ -1,6 +1,11 @@
 requirejs.config({
     paths: {
         worker: "../worker"
+    },
+
+    worker: {
+        debug: true,
+        stack: true
     }
 });
 
