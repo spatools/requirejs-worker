@@ -17,7 +17,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node node_modules/requirejs/bin/r.js -o name=main out=dist/app.js baseUrl=tests paths.worker=../worker",
+    "test": "node node_modules/requirejs/bin/r.js -o build.js",
+    "test-almond": "node node_modules/requirejs/bin/r.js -o build.almond.js",
     "start": "http-server ./"
   },
   "keywords": [
@@ -28,6 +29,7 @@
     "webworker"
   ],
   "devDependencies": {
+    "almond": "^0.3.3",
     "http-server": "^0.9.0",
     "requirejs": "^2.3.2"
   }
