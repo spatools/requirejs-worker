@@ -5,7 +5,8 @@ define(function () {
 
     var
         HAS_WORKER = "Worker" in window,
-        WORKER_PATH = "worker.js",
+        WORKER_PATH = "webworker.js",
+        IS_ALMOND = require.length === 5,
 
         WORKER, WORKER_PROMISE, WORKER_RESOLVE,
 
@@ -71,10 +72,28 @@ define(function () {
             return;
         }
 
-        PROXIES[name] = { onLoad: onLoad };
+        proxy = PROXIES[name] = { 
+            name: name, 
+            onLoad: onLoad,
+            operations: {},
+            isLoaded: false
+        };
+
+        if (IS_ALMOND) {
+            var mod = require(name);
+            proxy.methods = Object.keys(mod).filter(function(key) { return typeof mod[key] === "function"; });
+            proxy.module = buildProxyModule(proxy);
+            onLoad(proxy.module);
+        }
 
         ensureWorker().then(function (worker) {
             worker.postMessage({ module: "system", load: name });
+        });
+    }
+
+    function ensureProxyPromise(name) {
+        return new Promise(function (resolve) {
+            ensureProxy(name, resolve);
         });
     }
 
@@ -102,7 +121,8 @@ define(function () {
                 operation.reject = rej;
             });
 
-            return ensureWorker()
+            return ensureProxyPromise(name)
+                .then(ensureWorker)
                 .then(function (worker) {
                     worker.postMessage({ module: name, method: method, cid: cid, args: args });
                 })
@@ -145,10 +165,12 @@ define(function () {
 
     function onModuleLoaded(res) {
         var proxy = PROXIES[res.name];
-        proxy.name = res.name;
-        proxy.methods = res.methods;
-        proxy.operations = {};
-        proxy.module = buildProxyModule(proxy);
+
+        if (!IS_ALMOND) {
+            proxy.methods = res.methods;
+            proxy.module = buildProxyModule(proxy);
+        }
+
         proxy.isLoaded = true;
 
         Array.isArray(proxy.onLoad) ?
