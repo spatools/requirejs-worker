@@ -1,0 +1,34 @@
+{
+  "name": "requirejs-worker",
+  "version": "1.0.0",
+  "description": "Require.JS Web Worker plugin",
+  "author": "Touchify (dev@touchify.co)",
+  "license": "MIT",
+  "main": "worker.js",
+  "homepage": "https://github.com/touchifyapp/requirejs-worker#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/touchifyapp/requirejs-worker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/touchifyapp/requirejs-worker/issues"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node node_modules/requirejs/bin/r.js -o name=main out=dist/app.js baseUrl=tests paths.worker=../worker",
+    "start": "http-server ./"
+  },
+  "keywords": [
+    "requirejs",
+    "require",
+    "plugin",
+    "worker",
+    "webworker"
+  ],
+  "devDependencies": {
+    "http-server": "^0.9.0",
+    "requirejs": "^2.3.2"
+  }
+}

@@ -1,0 +1,42 @@
+# Visual Studio User-specific files
+*.suo
+*.user
+*.sln.docstates
+.vs/
+
+# Build results
+[T|t]emp/
+[D|d]ist/
+[B|b]in/
+[O|o]bj/
+[T|t]est[R|r]esults/
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.dat
+*.tmp
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# =========================
+# Desktops detritus
+# =========================
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Mac desktop service store files
+.DS_Store
