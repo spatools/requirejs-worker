@@ -4,6 +4,7 @@ define(function () {
 
         IS_WINDOWS = !!process.platform.match(/^win/),
 
+        RJS_PATH,
         OUT_DIR,
         CONFIG,
 
@@ -19,14 +20,14 @@ define(function () {
     function load(name, req, onLoad, config) {
         CONFIG = CONFIG || config;
         OUT_DIR = OUT_DIR || (config.dir || path.dirname(config.out)).replace(/\\/g, "/");
+        RJS_PATH = RJS_PATH || req.toUrl("worker/r.js").replace(/\\/g, "/");
 
         // External URLs don't get added (just like JS requires)
         if (ABSOLUTE_URL_REGEXP.test(name)) {
             return onLoad();
         }
 
-        var fileUrl = req.toUrl(name + ".js")
-                         .replace(/\\/g, "/");
+        var fileUrl = req.toUrl(name + ".js").replace(/\\/g, "/");
 
         // Add file to buffer
         WORKERS_BUFFERS[name] = loadFile(fileUrl);
@@ -56,15 +57,43 @@ define(function () {
     }
 
     function onLayerEnd(write, data) {
-        var out = path.join(path.dirname(data.path), "worker.js"),
+        var 
+            out = path.join(path.dirname(data.path), "webworker.js").replace(/\\/g, "/"),
+            workers = Object.keys(LAYER_BUFFERS),
             content = "";
 
-        console.log(CONFIG);
+        process.nextTick(function() {
 
-        saveFile(out, content);
+            var rjs = nodeRequire(RJS_PATH),
+                config = cloneConfig(out, workers);
+
+            rjs.optimize(config, function(output) {
+                console.log(output);
+            });
+        });
+
+        // saveFile(out, content);
     }
 
+    function cloneConfig(out, include) {
+        var config = extend({}, CONFIG, { out: out, include: include });
 
+        if (config.name === "almond" || config.name === "requirejs") {
+            include.unshift("worker/init");
+            config.insertRequire = ["worker/init"];
+        }
+        else {
+            // TODO: FIX DOES NOT WORK FOR NOW
+            // worker/proxy module is inserted before webworker so no requirejs
+            config.name = "";
+            include.unshift("webworker");
+        }
+
+        delete config.modules;
+        delete config.buildFile;
+        
+        return config;        
+    }
 
     function loadFile(path) {
         if (typeof process !== "undefined" && process.versions && !!process.versions.node && require.nodeRequire) {
@@ -122,6 +151,18 @@ define(function () {
                 output.close();
             }
         }
+    }
+
+    function extend(obj) {
+        var froms = Array.prototype.slice.call(arguments, 1);
+
+        froms.forEach(function(from) {
+            Object.keys(from).forEach(function(key) {
+                obj[key] = from[key];
+            });
+        });
+
+        return obj;
     }
 
 });
