@@ -11,6 +11,7 @@
 - [x] Test on Chrome, Firefox, Edge, IE 10 (with Promise polyfill)
 - [ ] Test on Opera, Safari, mobiles...
 - [ ] Allow multiple Workers
+- [ ] Create Workers from Web Worker
 - [ ] Allow SharedWorker ?
 - [ ] Create a Proxy when Web Workers are not availables
 - [ ] Optimize performances
@@ -57,7 +58,6 @@ requirejs.config({
 - __path__: (Optional) URL of the worker. _Default: `webworker.js`_
 - __debug__: (Optional) Output debug informations to console. _Default: `false`_
 - __stack__: (Optional) Send error stacks from Web Worker. _Default: `false`_
-
 
 ## Usage
 
@@ -146,6 +146,11 @@ To enable web worker building, you need to include `require.js` in your resultin
         worker: "path/to/workerlib/worker"
     },
 
+    worker: {
+        // requirejs-worker config goes here
+        path: "worker.js"
+    },
+
     include: ["main"],
     insertRequire: ["main"],
 
@@ -154,6 +159,13 @@ To enable web worker building, you need to include `require.js` in your resultin
 ```
 
 `requirejs-worker` will automatically adapt the configuration to generate the `webworker.js` file.
+
+#### Available Worker Options
+
+- __path__: (Optional) URL of the destination worker file. _Default: `webworker.js`_
+- __overrides__: (Optional) Configuration overrides for Web worker optimization. _Default: `{}`_
+- __fallbacks__: (Optional) Output modules in both files in case of no Web Worker support. _Default: `true`_
+- __output__: (Optional) Set to `false` to disable destionation worker file creation. _Default: `true`_
 
 #### Note about almond
 

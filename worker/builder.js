@@ -5,8 +5,7 @@ define(function () {
         IS_WINDOWS = !!process.platform.match(/^win/),
 
         RJS_PATH,
-        OUT_DIR,
-        CONFIG,
+        CONFIG, WORKER_CONFIG,
 
         WORKERS_BUFFERS = {},
         LAYER_BUFFERS = {};
@@ -19,8 +18,10 @@ define(function () {
 
     function load(name, req, onLoad, config) {
         CONFIG = CONFIG || config;
-        OUT_DIR = OUT_DIR || (config.dir || path.dirname(config.out)).replace(/\\/g, "/");
         RJS_PATH = RJS_PATH || req.toUrl("worker/r.js").replace(/\\/g, "/");
+
+        WORKER_CONFIG = WORKER_CONFIG || config.worker || {};
+        WORKER_CONFIG.path = WORKER_CONFIG.path || "webworker.js";
 
         // External URLs don't get added (just like JS requires)
         if (ABSOLUTE_URL_REGEXP.test(name)) {
@@ -48,7 +49,7 @@ define(function () {
         var content = WORKERS_BUFFERS[moduleName];
         LAYER_BUFFERS[moduleName] = content;
 
-        if (CONFIG.skipFallback) {
+        if (WORKER_CONFIG.fallbacks === false) {
             return;
         }
 
@@ -57,26 +58,27 @@ define(function () {
     }
 
     function onLayerEnd(write, data) {
+        if (WORKER_CONFIG.output === false) {
+            return;
+        }
+
         var 
-            out = path.join(path.dirname(data.path), "webworker.js").replace(/\\/g, "/"),
-            workers = Object.keys(LAYER_BUFFERS),
-            content = "";
+            out = path.join(path.dirname(data.path), WORKER_CONFIG.path).replace(/\\/g, "/"),
+            workers = Object.keys(LAYER_BUFFERS);
 
         process.nextTick(function() {
-
-            var rjs = nodeRequire(RJS_PATH),
+            var
+                rjs = nodeRequire(RJS_PATH),
                 config = cloneConfig(out, workers);
 
             rjs.optimize(config, function(output) {
                 console.log(output);
             });
         });
-
-        // saveFile(out, content);
     }
 
     function cloneConfig(out, include) {
-        var config = extend({}, CONFIG, { out: out, include: include });
+        var config = extend({}, CONFIG, { out: out, include: include }, WORKER_CONFIG.overrides || {});
 
         if (config.name === "almond" || config.name === "requirejs") {
             include.unshift("worker/init");
