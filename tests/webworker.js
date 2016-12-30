@@ -1,4 +1,5 @@
 importScripts(
+    // "https://rawgit.com/stefanpenner/es6-promise/master/dist/es6-promise.auto.js", // Uncomment for IE10
     "../node_modules/requirejs/require.js"
 );
 

@@ -2,6 +2,20 @@
 
 [Require.JS](http://requirejs.org) plugin to simplify [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) management.
 
+## Features
+
+`requirejs-worker` is a Work In Progress, some features are already availables but a lot of tests and improvements needs to be done.
+
+- [x] Load module in a Web Worker proxy
+- [x] Provide module proxy methods in DOM context
+- [x] Test on Chrome, Firefox, Edge, IE 10 (with Promise polyfill)
+- [ ] Test on Opera, Safari, mobiles...
+- [ ] Allow multiple Workers
+- [ ] Allow SharedWorker ?
+- [ ] Create a Proxy when Web Workers are not availables
+- [ ] Optimize performances
+- [ ] Optimize almonds builds
+
 ## Installation
 
 #### NPM
